@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>致符程洁</title>
+    <style>
+        /* --- 基础重置 --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: #080002;
+            overflow: hidden;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* --- 1. 画布层 --- */
+        #heart-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* --- 2. 诗词层 --- */
+        #poems-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .poem-item {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.4);
+            text-shadow: 0 0 2px rgba(255, 192, 203, 0.3);
+            white-space: nowrap;
+            font-style: italic;
+            transition: opacity 1s ease-out, transform 5s ease-out;
+            opacity: 0; /* 初始不可见 */
+        }
+
+        /* --- 3. 核心文字层 --- */
+        #message-container {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            text-align: center;
+            pointer-events: none;
+            width: 95%;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: baseline;
+        }
+
+        .char {
+            display: inline-block;
+            font-size: 1.8rem;
+            color: #fff;
+            margin: 0 2px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 77, 109, 0.8);
+            opacity: 0; /* 初始隐藏 */
+            transform: translateY(30px) scale(0.5);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: blur(5px);
+        }
+
+        /* 文字出现后的状态 */
+        .char.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+            animation: textFloat 3s ease-in-out infinite alternate; /* 持续浮动动画 */
+        }
+
+        /* 名字的特殊样式 */
+        .char.name-style {
+            font-size: 2.2rem;
+            color: #ff4d6d;
+            text-shadow: 0 0 15px rgba(255, 0, 0, 0.9), 0 0 30px rgba(255, 77, 109, 0.6);
+        }
+
+        /* 持续浮动动画关键帧 */
+        @keyframes textFloat {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-8px); }
+        }
+
+        /* 媒体查询适配 */
+        @media (min-width: 400px) {
+            .char { font-size: 2rem; }
+            .char.name-style { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="heart-canvas"></canvas>
+
+    <div id="poems-container"></div>
+
+    <div id="message-container"></div>
+
+    <script>
+        // ================= 配置项 =================
+        const CONFIG = {
+            HEART_COLOR: '#ff4d6d',
+            PARTICLE_COUNT: 1500, // 粒子数量
+            TARGET_TEXT: "我爱你，符程洁",
+            POEM_LIST: [
+                "山有木兮木有枝", "心悦君兮君不知", "愿得一心人", "白首不相离",
+                "玲珑骰子安红豆", "入骨相思知不知", "金风玉露一相逢", "便胜却人间无数",
+                "两情若是久长时", "又岂在朝朝暮暮", "斯人若彩虹", "遇上方知有",
+                "也想看看你的眼里", "是不是住着四季"
+            ]
+        };
+
+        // ================= 1. 粒子系统 =================
+        class ParticleSystem {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.particles = [];
+                
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+
+                this.initParticles();
+                this.animate();
+                
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            // 获取爱心填充坐标
+            getHeartPosition(scale) {
+                const t = Math.random() * Math.PI * 2;
+                const r = Math.sqrt(Math.random()); // 填充因子
+                
+                const xBoundary = 16 * Math.pow(Math.sin(t), 3);
+                const yBoundary = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+
+                return {
+                    x: xBoundary * r * scale,
+                    y: yBoundary * r * scale
+                };
+            }
+
+            initParticles() {
+                this.particles = [];
+                const scale = Math.min(this.width, this.height) / 40;
+
+                for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                    const pos = this.getHeartPosition(scale);
+                    const cx = this.width / 2 + pos.x;
+                    const cy = this.height / 2 + pos.y - 20;
+
+                    this.particles.push({
+                        x: cx,
+                        y: cy,
+                        baseX: cx,
+                        baseY: cy,
+                        size: Math.random() * 1.5 + 0.5,
+                        color: i % 2 === 0 ? CONFIG.HEART_COLOR : '#ff758f',
+                        velocity: {
+                            x: (Math.random() - 0.5) * 0.3,
+                            y: (Math.random() - 0.5) * 0.3,
+                        }
+                    });
+                }
+            }
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                this.initParticles();
+            }
+
+            animate() {
+                // 拖尾效果
+                this.ctx.fillStyle = 'rgba(8, 0, 2, 0.1)';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                const time = Date.now() * 0.0015;
+                const beatScale = 1 + Math.sin(time * 2) * 0.03;
+
+                this.particles.forEach(p => {
+                    p.x += p.velocity.x;
+                    p.y += p.velocity.y;
+
+                    const dx = p.x - p.baseX;
+                    const dy = p.y - p.baseY;
+
+                    if (Math.abs(dx) > 3) p.velocity.x = -dx * 0.02;
+                    if (Math.abs(dy) > 3) p.velocity.y = -dy * 0.02;
+
+                    const centerX = this.width / 2;
+                    const centerY = this.height / 2 - 20;
+                    const currentX = (p.x - centerX) * beatScale + centerX;
+                    const currentY = (p.y - centerY) * beatScale + centerY;
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(currentX, currentY, p.size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.fill();
+                });
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // ================= 2. 诗词浮动逻辑 =================
+        function startPoems() {
+            const container = document.getElementById('poems-container');
+
+            setInterval(() => {
+                const text = CONFIG.POEM_LIST[Math.floor(Math.random() * CONFIG.POEM_LIST.length)];
+                const el = document.createElement('div');
+                el.className = 'poem-item';
+                el.innerText = text;
+
+                // 随机位置逻辑
+                let x = Math.random() * (window.innerWidth - 80);
+                let y = Math.random() * (window.innerHeight - 40);
+                // 避让中心
+                if (Math.abs(x - window.innerWidth / 2) < 120 && Math.abs(y - window.innerHeight / 2) < 100) {
+                    y = Math.random() < 0.5 ? y - 150 : y + 150;
+                }
+
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                el.style.fontSize = (Math.random() * 4 + 12) + 'px';
+
+                container.appendChild(el);
+
+                // 强制重绘以触发 transition
+                requestAnimationFrame(() => {
+                    el.style.opacity = '1';
+                    el.style.transform = `translateY(-${Math.random() * 30 + 30}px)`; // 向上漂浮
+                });
+
+                // 移除逻辑
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 1000); // 等待淡出动画结束
+                }, 4000);
+
+            }, 1200);
+        }
+
+        // ================= 3. 主文字浮现逻辑 =================
+        function startTextReveal() {
+            const container = document.getElementById('message-container');
+            const text = CONFIG.TARGET_TEXT;
+            let index = 0;
+
+            const timer = setInterval(() => {
+                if (index >= text.length) {
+                    clearInterval(timer);
+                    return;
+                }
+
+                const char = text[index];
+                const span = document.createElement('span');
+                span.innerText = char;
+                span.className = 'char';
+                
+                // 判断是否是名字部分（"我爱你，" 占4个字符，之后的是名字）
+                if (index >= 4) {
+                    span.classList.add('name-style');
+                }
+
+                container.appendChild(span);
+
+                // 动画触发
+                requestAnimationFrame(() => {
+                    span.classList.add('visible');
+                });
+
+                index++;
+            }, 350); // 每个字间隔350ms
+        }
+
+        // ================= 启动入口 =================
+        window.onload = () => {
+            // 1. 启动粒子
+            new ParticleSystem('heart-canvas');
+            
+            // 2. 启动诗词
+            startPoems();
+
+            // 3. 延迟启动文字，增加仪式感
+            setTimeout(startTextReveal, 1000);
+        };
+
+    </script>
+</body>
+</html>

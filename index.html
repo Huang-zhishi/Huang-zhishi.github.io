@@ -14,160 +14,100 @@
             width: 100vw;
             height: 100vh;
             position: relative;
+            /* 防止移动端触摸滚动和双击缩放 */
+            touch-action: none; 
         }
 
-        /* --- 新增：流星样式 --- */
-        .meteor {
-            position: absolute;
-            width: 2px;
-            height: 80px; /* 流星长度 */
-            /* 渐变背景形成拖尾 */
-            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, #ffffff 100%);
-            border-radius: 50%;
-            opacity: 0;
-            z-index: 0; /* 在最底层背景 */
-            pointer-events: none;
-        }
-
-        /* 流星划过动画 */
-        @keyframes meteor-fall {
-            0% {
-                opacity: 1;
-                transform: translate(0, 0) rotate(-35deg) scaleY(0.8);
-            }
-            20% {
-                 opacity: 1;
-            }
-            100% {
-                opacity: 0;
-                /* 向左下方移动，距离根据屏幕自行调整 */
-                transform: translate(-50vh, 50vh) rotate(-35deg) scaleY(1);
-            }
-        }
-
-        /* --- 1. 画布层 (爱心粒子) --- */
+        /* --- 画布层级管理 --- */
+        /* 1. 爱心粒子层 (底层) */
         #heart-canvas {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             z-index: 1;
         }
-
-        /* --- 2. 诗词层 --- */
-        #poems-container {
+        /* 2. 交互流星轨迹层 (中层) */
+        #interaction-canvas {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             z-index: 2;
-            pointer-events: none;
+            pointer-events: none; /* 让事件穿透，由 JS 监听 window */
         }
 
+        /* --- DOM 元素层 --- */
+        /* 背景流星 (CSS动画实现) */
+        .bg-meteor {
+            position: absolute;
+            width: 2px; height: 80px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, #ffffff 100%);
+            border-radius: 50%; opacity: 0; z-index: 0; pointer-events: none;
+        }
+        @keyframes meteor-fall {
+            0% { opacity: 1; transform: translate(0, 0) rotate(-35deg) scaleY(0.8); }
+            20% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50vh, 50vh) rotate(-35deg) scaleY(1); }
+        }
+
+        /* 诗词层 */
+        #poems-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 3; pointer-events: none;
+        }
         .poem-item {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.4);
+            position: absolute; color: rgba(255, 255, 255, 0.4);
             text-shadow: 0 0 2px rgba(255, 192, 203, 0.3);
-            white-space: nowrap;
-            font-style: italic;
-            transition: opacity 1s ease-out, transform 5s ease-out;
-            opacity: 0; 
+            white-space: nowrap; font-style: italic;
+            transition: opacity 1s ease-out, transform 5s ease-out; opacity: 0;
         }
 
-        /* --- 3. 核心文字层 --- */
+        /* 核心文字层 */
         #message-container {
-            position: absolute;
-            top: 55%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 3;
-            text-align: center;
-            pointer-events: none;
-            width: 95%;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            align-items: baseline;
+            position: absolute; top: 55%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 4;
+            text-align: center; pointer-events: none; width: 95%;
+            display: flex; justify-content: center; flex-wrap: wrap; align-items: baseline;
         }
-
         .char {
-            display: inline-block;
-            font-size: 1.8rem;
-            color: #fff;
-            margin: 0 2px;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 77, 109, 0.8);
-            opacity: 0; 
-            transform: translateY(30px) scale(0.5);
-            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            filter: blur(5px);
+            display: inline-block; font-size: 1.8rem; color: #fff; margin: 0 2px;
+            font-weight: bold; text-shadow: 0 0 10px rgba(255, 77, 109, 0.8);
+            opacity: 0; transform: translateY(30px) scale(0.5);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); filter: blur(5px);
         }
-
         .char.visible {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            filter: blur(0);
+            opacity: 1; transform: translateY(0) scale(1); filter: blur(0);
             animation: textFloat 3s ease-in-out infinite alternate;
         }
-
         .char.name-style {
-            font-size: 2.2rem;
-            color: #ff4d6d;
+            font-size: 2.2rem; color: #ff4d6d;
             text-shadow: 0 0 15px rgba(255, 0, 0, 0.9), 0 0 30px rgba(255, 77, 109, 0.6);
         }
+        @keyframes textFloat { 0% { transform: translateY(0); } 100% { transform: translateY(-8px); } }
+        @media (min-width: 400px) { .char { font-size: 2rem; } .char.name-style { font-size: 2.5rem; } }
 
-        @keyframes textFloat {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-8px); }
-        }
-
-        @media (min-width: 400px) {
-            .char { font-size: 2rem; }
-            .char.name-style { font-size: 2.5rem; }
-        }
-
-        /* --- 音乐触发提示层 --- */
+        /* 启动提示层 */
         #start-trigger {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: rgba(255,255,255,0.7);
-            font-size: 1.2rem;
-            background: rgba(0,0,0,0.2);
-            cursor: pointer;
-            /* 添加一个微妙的闪烁动画提示点击 */
-            animation: pulse 2s infinite;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 999; display: flex; justify-content: center; align-items: center;
+            color: rgba(255,255,255,0.8); font-size: 1.2rem; background: rgba(0,0,0,0.4);
+            cursor: pointer; animation: pulse 2s infinite; user-select: none;
         }
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
     </style>
 </head>
 <body>
 
     <audio id="bg-music" loop preload="auto">
-        <source src="your-music-file.mp3" type="audio/mpeg">
-        您的浏览器不支持 audio 标签。
+        <source src="love.mp3" type="audio/mpeg">
     </audio>
     
-    <div id="start-trigger">点击屏幕开始</div>
+    <div id="start-trigger">点击屏幕 开始以爱之名</div>
 
     <canvas id="heart-canvas"></canvas>
+    <canvas id="interaction-canvas"></canvas>
+
     <div id="poems-container"></div>
     <div id="message-container"></div>
 
     <script>
-        // ================= 配置项 =================
         const CONFIG = {
             HEART_COLOR: '#ff4d6d',
             PARTICLE_COUNT: 1500,
@@ -180,106 +120,142 @@
             ]
         };
 
-        // ================= 新增：流星系统 =================
-        function startMeteors() {
-            const meteorContainer = document.body;
-            
+        // ================= 1. 背景流星系统 (DOM实现) =================
+        function startBackgroundMeteors() {
+            const container = document.body;
             setInterval(() => {
-                // 限制同时存在的流星数量，防止性能问题
-                if (document.querySelectorAll('.meteor').length > 5) return;
-
+                // 限制数量
+                if (document.querySelectorAll('.bg-meteor').length > 6) return;
                 const meteor = document.createElement('div');
-                meteor.classList.add('meteor');
-                
-                // 随机位置：主要在右上方区域
-                // left: 屏幕宽度的 30% - 100% 之间
-                meteor.style.left = (Math.random() * 70 + 30) + 'vw'; 
-                // top: 屏幕上方 -100px 到 200px 之间
-                meteor.style.top = (Math.random() * 300 - 100) + 'px';
-
-                // 随机动画时长和延迟
-                const duration = Math.random() * 1.5 + 1.5; // 1.5s - 3s
+                meteor.classList.add('bg-meteor');
+                // 随机位置：屏幕右上方
+                meteor.style.left = (Math.random() * 60 + 40) + 'vw'; 
+                meteor.style.top = (Math.random() * 200 - 100) + 'px';
+                const duration = Math.random() * 1.5 + 2; // 2s - 3.5s
                 meteor.style.animation = `meteor-fall ${duration}s linear forwards`;
-                
-                meteorContainer.appendChild(meteor);
-
-                // 动画结束后移除元素
-                setTimeout(() => {
-                    meteor.remove();
-                }, duration * 1000 + 100);
-
-            }, Math.random() * 1000 + 800); // 每 0.8 - 1.8 秒生成一个
+                container.appendChild(meteor);
+                setTimeout(() => meteor.remove(), duration * 1000 + 200);
+            }, Math.random() * 1500 + 1000);
         }
 
-
-        // ================= 1. 粒子系统 (保持不变) =================
-        class ParticleSystem {
+        // ================= 2. 爱心粒子系统 (Canvas 1) =================
+        class HeartSystem {
             constructor(canvasId) {
                 this.canvas = document.getElementById(canvasId);
                 this.ctx = this.canvas.getContext('2d');
-                this.width = window.innerWidth;
-                this.height = window.innerHeight;
+                this.width = window.innerWidth; this.height = window.innerHeight;
                 this.particles = [];
-                this.canvas.width = this.width;
-                this.canvas.height = this.height;
-                this.initParticles();
-                this.animate();
+                this.canvas.width = this.width; this.canvas.height = this.height;
+                this.initParticles(); this.animate();
                 window.addEventListener('resize', () => this.resize());
             }
             getHeartPosition(scale) {
-                const t = Math.random() * Math.PI * 2;
-                const r = Math.sqrt(Math.random());
-                const xBoundary = 16 * Math.pow(Math.sin(t), 3);
-                const yBoundary = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-                return { x: xBoundary * r * scale, y: yBoundary * r * scale };
+                const t = Math.random() * Math.PI * 2; const r = Math.sqrt(Math.random());
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                return { x: x * r * scale, y: y * r * scale };
             }
             initParticles() {
-                this.particles = [];
-                const scale = Math.min(this.width, this.height) / 40;
+                this.particles = []; const scale = Math.min(this.width, this.height) / 40;
                 for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
                     const pos = this.getHeartPosition(scale);
                     this.particles.push({
-                        x: this.width / 2 + pos.x,
-                        y: this.height / 2 + pos.y - 20,
-                        baseX: this.width / 2 + pos.x,
-                        baseY: this.height / 2 + pos.y - 20,
+                        x: this.width/2 + pos.x, y: this.height/2 + pos.y - 20,
+                        baseX: this.width/2 + pos.x, baseY: this.height/2 + pos.y - 20,
                         size: Math.random() * 1.5 + 0.5,
                         color: i % 2 === 0 ? CONFIG.HEART_COLOR : '#ff758f',
-                        velocity: { x: (Math.random() - 0.5) * 0.3, y: (Math.random() - 0.5) * 0.3 }
+                        velocity: { x: (Math.random()-0.5)*0.3, y: (Math.random()-0.5)*0.3 }
                     });
                 }
             }
             resize() {
-                this.width = window.innerWidth;
-                this.height = window.innerHeight;
-                this.canvas.width = this.width;
-                this.canvas.height = this.height;
+                this.width = window.innerWidth; this.height = window.innerHeight;
+                this.canvas.width = this.width; this.canvas.height = this.height;
                 this.initParticles();
             }
             animate() {
-                this.ctx.fillStyle = 'rgba(8, 0, 2, 0.1)';
+                this.ctx.fillStyle = 'rgba(8, 0, 2, 0.1)'; // 拖尾效果核心
                 this.ctx.fillRect(0, 0, this.width, this.height);
-                const time = Date.now() * 0.0015;
-                const beatScale = 1 + Math.sin(time * 2) * 0.03;
+                const beatScale = 1 + Math.sin(Date.now() * 0.003) * 0.03;
                 this.particles.forEach(p => {
                     p.x += p.velocity.x; p.y += p.velocity.y;
                     const dx = p.x - p.baseX; const dy = p.y - p.baseY;
                     if (Math.abs(dx) > 3) p.velocity.x = -dx * 0.02;
                     if (Math.abs(dy) > 3) p.velocity.y = -dy * 0.02;
-                    const centerX = this.width / 2; const centerY = this.height / 2 - 20;
-                    const currentX = (p.x - centerX) * beatScale + centerX;
-                    const currentY = (p.y - centerY) * beatScale + centerY;
+                    const cx = this.width/2; const cy = this.height/2 - 20;
                     this.ctx.beginPath();
-                    this.ctx.arc(currentX, currentY, p.size, 0, Math.PI * 2);
-                    this.ctx.fillStyle = p.color;
-                    this.ctx.fill();
+                    this.ctx.arc((p.x-cx)*beatScale+cx, (p.y-cy)*beatScale+cy, p.size, 0, Math.PI*2);
+                    this.ctx.fillStyle = p.color; this.ctx.fill();
                 });
                 requestAnimationFrame(() => this.animate());
             }
         }
 
-        // ================= 2. 诗词浮动逻辑 (保持不变) =================
-        function startPoems() {
+        // ================= 3. 全新：交互流星轨迹系统 (Canvas 2) =================
+        class InteractionSystem {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.width = window.innerWidth; this.height = window.innerHeight;
+                this.canvas.width = this.width; this.canvas.height = this.height;
+                this.trails = [];
+                this.initListeners(); this.animate();
+                window.addEventListener('resize', () => {
+                    this.width = window.innerWidth; this.height = window.innerHeight;
+                    this.canvas.width = this.width; this.canvas.height = this.height;
+                });
+            }
+            initListeners() {
+                // 监听移动端触摸和桌面端鼠标移动
+                const handleMove = (e) => {
+                    let x, y;
+                    if (e.touches) {
+                        x = e.touches[0].clientX; y = e.touches[0].clientY;
+                    } else {
+                        x = e.clientX; y = e.clientY;
+                    }
+                    // 每次移动生成几个粒子
+                    for(let i=0; i<3; i++) this.createTrailParticle(x, y);
+                };
+                window.addEventListener('touchmove', handleMove, { passive: true });
+                window.addEventListener('mousemove', handleMove);
+            }
+            createTrailParticle(x, y) {
+                this.trails.push({
+                    x: x + (Math.random() - 0.5) * 10, // 在触点附近随机偏移
+                    y: y + (Math.random() - 0.5) * 10,
+                    size: Math.random() * 3 + 1,
+                    speedX: (Math.random() - 0.5) * 2,
+                    speedY: (Math.random() - 0.5) * 2 + 1, // 稍微向下掉落
+                    life: 1, // 生命值 1 -> 0
+                    color: `hsl(${Math.random() * 60 + 330}, 100%, 70%)` // 粉红到橙黄色系
+                });
+            }
+            animate() {
+                // 清空画布，不需要拖尾，因为粒子本身有生命周期
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                for (let i = 0; i < this.trails.length; i++) {
+                    const p = this.trails[i];
+                    p.x += p.speedX; p.y += p.speedY;
+                    p.life -= 0.015; // 生命值递减
+                    if (p.life <= 0) {
+                        this.trails.splice(i, 1); i--; continue;
+                    }
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); //大小随生命值变小
+                    // 使用径向渐变让粒子看起来发光
+                    const gradient = this.ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * p.life);
+                    gradient.addColorStop(0, "rgba(255, 255, 255, " + p.life + ")");
+                    gradient.addColorStop(1, p.color.replace(")", ", " + p.life * 0.5 + ")"));
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fill();
+                }
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // ================= 4. 辅助逻辑 (诗词、文字、启动) =================
+        function startPoems() { /* ... 代码与之前相同，省略以节省空间 ... */ 
             const container = document.getElementById('poems-container');
             setInterval(() => {
                 const text = CONFIG.POEM_LIST[Math.floor(Math.random() * CONFIG.POEM_LIST.length)];
@@ -293,9 +269,7 @@
                 setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 1000); }, 4000);
             }, 1200);
         }
-
-        // ================= 3. 主文字浮现逻辑 (保持不变) =================
-        function startTextReveal() {
+        function startTextReveal() { /* ... 代码与之前相同，省略以节省空间 ... */ 
             const container = document.getElementById('message-container');
             const text = CONFIG.TARGET_TEXT; let index = 0;
             const timer = setInterval(() => {
@@ -309,32 +283,31 @@
             }, 350);
         }
 
-        // ================= 启动入口与音乐控制 =================
+        // ================= 入口函数 =================
         window.onload = () => {
-            // 1. 基础动画启动
-            new ParticleSystem('heart-canvas');
+            // 立即启动的系统
+            new HeartSystem('heart-canvas');
+            new InteractionSystem('interaction-canvas');
             startPoems();
             
-            // 2. 音乐播放控制
             const audio = document.getElementById('bg-music');
             const trigger = document.getElementById('start-trigger');
 
-            // 尝试自动播放 (大部分浏览器会拦截)
-            audio.play().catch(() => {
-                console.log('自动播放被拦截，等待用户交互。');
-            });
-
-            // 点击触发播放，并开始核心动画
+            // 点击触发音乐和背景流星/文字
             trigger.addEventListener('click', () => {
-                audio.play();
-                // 移除触发层
+                audio.play().then(() => {
+                    console.log("Music playing...");
+                }).catch(e => console.log("Play failed check file path:", e));
+                
                 trigger.style.opacity = '0';
                 setTimeout(() => trigger.remove(), 500);
 
-                // 启动流星和文字
-                startMeteors();
-                setTimeout(startTextReveal, 500);
-            }, { once: true }); // 确保只触发一次
+                // 延迟启动高消耗的背景动画和文字，保证点击时的流畅度
+                setTimeout(() => {
+                    startBackgroundMeteors();
+                    startTextReveal();
+                }, 300);
+            }, { once: true });
         };
 
     </script>

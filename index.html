@@ -16,7 +16,36 @@
             position: relative;
         }
 
-        /* --- 1. 画布层 --- */
+        /* --- 新增：流星样式 --- */
+        .meteor {
+            position: absolute;
+            width: 2px;
+            height: 80px; /* 流星长度 */
+            /* 渐变背景形成拖尾 */
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, #ffffff 100%);
+            border-radius: 50%;
+            opacity: 0;
+            z-index: 0; /* 在最底层背景 */
+            pointer-events: none;
+        }
+
+        /* 流星划过动画 */
+        @keyframes meteor-fall {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) rotate(-35deg) scaleY(0.8);
+            }
+            20% {
+                 opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                /* 向左下方移动，距离根据屏幕自行调整 */
+                transform: translate(-50vh, 50vh) rotate(-35deg) scaleY(1);
+            }
+        }
+
+        /* --- 1. 画布层 (爱心粒子) --- */
         #heart-canvas {
             position: absolute;
             top: 0;
@@ -44,7 +73,7 @@
             white-space: nowrap;
             font-style: italic;
             transition: opacity 1s ease-out, transform 5s ease-out;
-            opacity: 0; /* 初始不可见 */
+            opacity: 0; 
         }
 
         /* --- 3. 核心文字层 --- */
@@ -70,63 +99,120 @@
             margin: 0 2px;
             font-weight: bold;
             text-shadow: 0 0 10px rgba(255, 77, 109, 0.8);
-            opacity: 0; /* 初始隐藏 */
+            opacity: 0; 
             transform: translateY(30px) scale(0.5);
             transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             filter: blur(5px);
         }
 
-        /* 文字出现后的状态 */
         .char.visible {
             opacity: 1;
             transform: translateY(0) scale(1);
             filter: blur(0);
-            animation: textFloat 3s ease-in-out infinite alternate; /* 持续浮动动画 */
+            animation: textFloat 3s ease-in-out infinite alternate;
         }
 
-        /* 名字的特殊样式 */
         .char.name-style {
             font-size: 2.2rem;
             color: #ff4d6d;
             text-shadow: 0 0 15px rgba(255, 0, 0, 0.9), 0 0 30px rgba(255, 77, 109, 0.6);
         }
 
-        /* 持续浮动动画关键帧 */
         @keyframes textFloat {
             0% { transform: translateY(0); }
             100% { transform: translateY(-8px); }
         }
 
-        /* 媒体查询适配 */
         @media (min-width: 400px) {
             .char { font-size: 2rem; }
             .char.name-style { font-size: 2.5rem; }
+        }
+
+        /* --- 音乐触发提示层 --- */
+        #start-trigger {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 1.2rem;
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+            /* 添加一个微妙的闪烁动画提示点击 */
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
         }
     </style>
 </head>
 <body>
 
+    <audio id="bg-music" loop preload="auto">
+        <source src="your-music-file.mp3" type="audio/mpeg">
+        您的浏览器不支持 audio 标签。
+    </audio>
+    
+    <div id="start-trigger">点击屏幕开始</div>
+
     <canvas id="heart-canvas"></canvas>
-
     <div id="poems-container"></div>
-
     <div id="message-container"></div>
 
     <script>
         // ================= 配置项 =================
         const CONFIG = {
             HEART_COLOR: '#ff4d6d',
-            PARTICLE_COUNT: 1500, // 粒子数量
+            PARTICLE_COUNT: 1500,
             TARGET_TEXT: "我爱你，符程洁",
             POEM_LIST: [
                 "山有木兮木有枝", "心悦君兮君不知", "愿得一心人", "白首不相离",
                 "玲珑骰子安红豆", "入骨相思知不知", "金风玉露一相逢", "便胜却人间无数",
                 "两情若是久长时", "又岂在朝朝暮暮", "斯人若彩虹", "遇上方知有",
-                "也想看看你的眼里", "是不是住着四季"
+                "也想看看你的眼里", "是不是住着四季", "想和你一起去看流星雨"
             ]
         };
 
-        // ================= 1. 粒子系统 =================
+        // ================= 新增：流星系统 =================
+        function startMeteors() {
+            const meteorContainer = document.body;
+            
+            setInterval(() => {
+                // 限制同时存在的流星数量，防止性能问题
+                if (document.querySelectorAll('.meteor').length > 5) return;
+
+                const meteor = document.createElement('div');
+                meteor.classList.add('meteor');
+                
+                // 随机位置：主要在右上方区域
+                // left: 屏幕宽度的 30% - 100% 之间
+                meteor.style.left = (Math.random() * 70 + 30) + 'vw'; 
+                // top: 屏幕上方 -100px 到 200px 之间
+                meteor.style.top = (Math.random() * 300 - 100) + 'px';
+
+                // 随机动画时长和延迟
+                const duration = Math.random() * 1.5 + 1.5; // 1.5s - 3s
+                meteor.style.animation = `meteor-fall ${duration}s linear forwards`;
+                
+                meteorContainer.appendChild(meteor);
+
+                // 动画结束后移除元素
+                setTimeout(() => {
+                    meteor.remove();
+                }, duration * 1000 + 100);
+
+            }, Math.random() * 1000 + 800); // 每 0.8 - 1.8 秒生成一个
+        }
+
+
+        // ================= 1. 粒子系统 (保持不变) =================
         class ParticleSystem {
             constructor(canvasId) {
                 this.canvas = document.getElementById(canvasId);
@@ -134,54 +220,35 @@
                 this.width = window.innerWidth;
                 this.height = window.innerHeight;
                 this.particles = [];
-                
                 this.canvas.width = this.width;
                 this.canvas.height = this.height;
-
                 this.initParticles();
                 this.animate();
-                
                 window.addEventListener('resize', () => this.resize());
             }
-
-            // 获取爱心填充坐标
             getHeartPosition(scale) {
                 const t = Math.random() * Math.PI * 2;
-                const r = Math.sqrt(Math.random()); // 填充因子
-                
+                const r = Math.sqrt(Math.random());
                 const xBoundary = 16 * Math.pow(Math.sin(t), 3);
                 const yBoundary = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-
-                return {
-                    x: xBoundary * r * scale,
-                    y: yBoundary * r * scale
-                };
+                return { x: xBoundary * r * scale, y: yBoundary * r * scale };
             }
-
             initParticles() {
                 this.particles = [];
                 const scale = Math.min(this.width, this.height) / 40;
-
                 for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
                     const pos = this.getHeartPosition(scale);
-                    const cx = this.width / 2 + pos.x;
-                    const cy = this.height / 2 + pos.y - 20;
-
                     this.particles.push({
-                        x: cx,
-                        y: cy,
-                        baseX: cx,
-                        baseY: cy,
+                        x: this.width / 2 + pos.x,
+                        y: this.height / 2 + pos.y - 20,
+                        baseX: this.width / 2 + pos.x,
+                        baseY: this.height / 2 + pos.y - 20,
                         size: Math.random() * 1.5 + 0.5,
                         color: i % 2 === 0 ? CONFIG.HEART_COLOR : '#ff758f',
-                        velocity: {
-                            x: (Math.random() - 0.5) * 0.3,
-                            y: (Math.random() - 0.5) * 0.3,
-                        }
+                        velocity: { x: (Math.random() - 0.5) * 0.3, y: (Math.random() - 0.5) * 0.3 }
                     });
                 }
             }
-
             resize() {
                 this.width = window.innerWidth;
                 this.height = window.innerHeight;
@@ -189,122 +256,85 @@
                 this.canvas.height = this.height;
                 this.initParticles();
             }
-
             animate() {
-                // 拖尾效果
                 this.ctx.fillStyle = 'rgba(8, 0, 2, 0.1)';
                 this.ctx.fillRect(0, 0, this.width, this.height);
-
                 const time = Date.now() * 0.0015;
                 const beatScale = 1 + Math.sin(time * 2) * 0.03;
-
                 this.particles.forEach(p => {
-                    p.x += p.velocity.x;
-                    p.y += p.velocity.y;
-
-                    const dx = p.x - p.baseX;
-                    const dy = p.y - p.baseY;
-
+                    p.x += p.velocity.x; p.y += p.velocity.y;
+                    const dx = p.x - p.baseX; const dy = p.y - p.baseY;
                     if (Math.abs(dx) > 3) p.velocity.x = -dx * 0.02;
                     if (Math.abs(dy) > 3) p.velocity.y = -dy * 0.02;
-
-                    const centerX = this.width / 2;
-                    const centerY = this.height / 2 - 20;
+                    const centerX = this.width / 2; const centerY = this.height / 2 - 20;
                     const currentX = (p.x - centerX) * beatScale + centerX;
                     const currentY = (p.y - centerY) * beatScale + centerY;
-
                     this.ctx.beginPath();
                     this.ctx.arc(currentX, currentY, p.size, 0, Math.PI * 2);
                     this.ctx.fillStyle = p.color;
                     this.ctx.fill();
                 });
-
                 requestAnimationFrame(() => this.animate());
             }
         }
 
-        // ================= 2. 诗词浮动逻辑 =================
+        // ================= 2. 诗词浮动逻辑 (保持不变) =================
         function startPoems() {
             const container = document.getElementById('poems-container');
-
             setInterval(() => {
                 const text = CONFIG.POEM_LIST[Math.floor(Math.random() * CONFIG.POEM_LIST.length)];
                 const el = document.createElement('div');
-                el.className = 'poem-item';
-                el.innerText = text;
-
-                // 随机位置逻辑
-                let x = Math.random() * (window.innerWidth - 80);
-                let y = Math.random() * (window.innerHeight - 40);
-                // 避让中心
-                if (Math.abs(x - window.innerWidth / 2) < 120 && Math.abs(y - window.innerHeight / 2) < 100) {
-                    y = Math.random() < 0.5 ? y - 150 : y + 150;
-                }
-
-                el.style.left = x + 'px';
-                el.style.top = y + 'px';
-                el.style.fontSize = (Math.random() * 4 + 12) + 'px';
-
+                el.className = 'poem-item'; el.innerText = text;
+                let x = Math.random() * (window.innerWidth - 80); let y = Math.random() * (window.innerHeight - 40);
+                if (Math.abs(x - window.innerWidth / 2) < 120 && Math.abs(y - window.innerHeight / 2) < 100) y = Math.random() < 0.5 ? y - 150 : y + 150;
+                el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.fontSize = (Math.random() * 4 + 12) + 'px';
                 container.appendChild(el);
-
-                // 强制重绘以触发 transition
-                requestAnimationFrame(() => {
-                    el.style.opacity = '1';
-                    el.style.transform = `translateY(-${Math.random() * 30 + 30}px)`; // 向上漂浮
-                });
-
-                // 移除逻辑
-                setTimeout(() => {
-                    el.style.opacity = '0';
-                    setTimeout(() => el.remove(), 1000); // 等待淡出动画结束
-                }, 4000);
-
+                requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = `translateY(-${Math.random() * 30 + 30}px)`; });
+                setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 1000); }, 4000);
             }, 1200);
         }
 
-        // ================= 3. 主文字浮现逻辑 =================
+        // ================= 3. 主文字浮现逻辑 (保持不变) =================
         function startTextReveal() {
             const container = document.getElementById('message-container');
-            const text = CONFIG.TARGET_TEXT;
-            let index = 0;
-
+            const text = CONFIG.TARGET_TEXT; let index = 0;
             const timer = setInterval(() => {
-                if (index >= text.length) {
-                    clearInterval(timer);
-                    return;
-                }
-
-                const char = text[index];
-                const span = document.createElement('span');
-                span.innerText = char;
-                span.className = 'char';
-                
-                // 判断是否是名字部分（"我爱你，" 占4个字符，之后的是名字）
-                if (index >= 4) {
-                    span.classList.add('name-style');
-                }
-
+                if (index >= text.length) { clearInterval(timer); return; }
+                const char = text[index]; const span = document.createElement('span');
+                span.innerText = char; span.className = 'char';
+                if (index >= 4) span.classList.add('name-style');
                 container.appendChild(span);
-
-                // 动画触发
-                requestAnimationFrame(() => {
-                    span.classList.add('visible');
-                });
-
+                requestAnimationFrame(() => { span.classList.add('visible'); });
                 index++;
-            }, 350); // 每个字间隔350ms
+            }, 350);
         }
 
-        // ================= 启动入口 =================
+        // ================= 启动入口与音乐控制 =================
         window.onload = () => {
-            // 1. 启动粒子
+            // 1. 基础动画启动
             new ParticleSystem('heart-canvas');
-            
-            // 2. 启动诗词
             startPoems();
+            
+            // 2. 音乐播放控制
+            const audio = document.getElementById('bg-music');
+            const trigger = document.getElementById('start-trigger');
 
-            // 3. 延迟启动文字，增加仪式感
-            setTimeout(startTextReveal, 1000);
+            // 尝试自动播放 (大部分浏览器会拦截)
+            audio.play().catch(() => {
+                console.log('自动播放被拦截，等待用户交互。');
+            });
+
+            // 点击触发播放，并开始核心动画
+            trigger.addEventListener('click', () => {
+                audio.play();
+                // 移除触发层
+                trigger.style.opacity = '0';
+                setTimeout(() => trigger.remove(), 500);
+
+                // 启动流星和文字
+                startMeteors();
+                setTimeout(startTextReveal, 500);
+            }, { once: true }); // 确保只触发一次
         };
 
     </script>
